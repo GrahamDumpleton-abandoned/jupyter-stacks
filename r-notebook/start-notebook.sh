@@ -1,0 +1,42 @@
+#!/bin/bash
+
+set -eo pipefail
+
+# Enable 'nss_wrapper' so that when run as uid not in UNIX account
+# database lookup of current user account details still works. If don't
+# do this then Python modules can fail if they don't handle running as
+# unknown user.
+
+NSS_USER_ID=$(id -u)
+
+NSS_WRAPPER_PASSWD=${HOME}/passwd
+NSS_WRAPPER_GROUP=/etc/group
+
+NSS_WRAPPER_LIBRARY=
+
+if [ -f /usr/local/nss_wrapper/lib64/libnss_wrapper.so ]; then
+    NSS_WRAPPER_LIBRARY=/usr/local/nss_wrapper/lib64/libnss_wrapper.so
+else
+    if [ -f /lib64/libnss_wrapper.so ]; then
+        NSS_WRAPPER_LIBRARY=/lib64/libnss_wrapper.so
+    fi
+fi
+
+if [ "${NSS_WRAPPER_LIBRARY}" != "" ]; then
+    if [ x"${NSS_USER_ID}" != x"0" -a x"${NSS_USER_ID}" != x"1000" ]; then
+        if [ ! -f ${NSS_WRAPPER_PASSWD} ]; then
+            cat /etc/passwd | sed -e 's/^jovyan:/builder:/' > ${NSS_WRAPPER_PASSWD}
+
+            echo "jovyan:x:${NSS_USER_ID}:0::${HOME}:/bin/bash" >> ${NSS_WRAPPER_PASSWD}
+        fi
+
+        export NSS_WRAPPER_PASSWD=${NSS_WRAPPER_PASSWD}
+        export NSS_WRAPPER_GROUP=${NSS_WRAPPER_GROUP}
+
+        export LD_PRELOAD=${NSS_WRAPPER_LIBRARY}
+    fi
+fi
+
+# Execute original script for starting the notebook.
+
+exec /usr/local/bin/start-notebook.sh
