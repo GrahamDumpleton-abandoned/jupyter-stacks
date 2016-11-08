@@ -1,0 +1,32 @@
+#!/bin/bash
+
+set -x
+
+set -eo pipefail
+
+# Copy injected files to correct place in 'work' directory.
+
+cp -Rf /tmp/src/. /home/jovyan/work
+
+rm -rf /tmp/src
+
+# Install any Python modules list in the 'requirements.txt' file. Need
+# to ensure we are in the 'work' directory so relative directory paths
+# resolve okay if installing packages from subdirectories. We remove the
+# 'requirements.txt' file when done in case we are producing an image
+# which will in turn be used as an S2I builder image.
+
+if [ -f /home/jovyan/work/requirements.txt ]; then
+    (cd /home/jovyan/work && pip2 install --user -r requirements.txt)
+    (cd /home/jovyan/work && pip3 install --user -r requirements.txt)
+    rm -rf /home/jovyan/.cache
+    rm /home/jovyan/work/requirements.txt
+fi
+
+# Fixup permissions so can still update directories and files when later
+# running as uid not in UNIX account database. It will still run as the
+# group 'root' so just need to make sure the directories and files are
+# group writable.
+
+find /home/jovyan -type d -exec chmod -f g+rwx,o+rx {} \;
+find /home/jovyan -type f -exec chmod -f g+rw {} \;

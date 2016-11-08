@@ -34,11 +34,17 @@ RUN mkdir /tmp/build && \
 RUN usermod -g root jovyan
 
 # Copy in own wrapper script for starting up Jupyter notebook so can
-# insert the 'nss_wrapper'.
+# insert the 'nss_wrapper'. These are also setup to act as S2I scripts.
 
-COPY start-notebook.sh /home/jovyan/start-notebook.sh
+COPY s2i /home/jovyan/s2i
 
-CMD [ "/home/jovyan/start-notebook.sh" ]
+LABEL io.k8s.description="S2I builder for Jupyter Notebook (minimal)." \
+      io.k8s.display-name="Jupyter Notebook (minimal)" \
+      io.openshift.expose-services="8888:http" \
+      io.openshift.tags="builder,python,jupyter" \
+      io.openshift.s2i.scripts-url="image:///home/jovyan/s2i/bin"
+
+CMD [ "/home/jovyan/s2i/bin/run" ]
 
 # Fix up file system permissions so that 'root' group is used. This
 # means that when running as uid not in the UNIX account database can
@@ -53,4 +59,4 @@ RUN chgrp -R root /home/jovyan \
 
 ENV HOME /home/jovyan
 
-USER jovyan
+USER 1000

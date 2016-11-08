@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x
+
 set -eo pipefail
 
 # Enable 'nss_wrapper' so that when run as uid not in UNIX account
